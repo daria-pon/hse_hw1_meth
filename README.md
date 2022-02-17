@@ -1,5 +1,5 @@
 # hse_hw1_meth
-Ссылка на гугл-колаб:  
+Ссылка на гугл-колаб: https://colab.research.google.com/drive/1fK8ZC9oFncBWUMIjctjx2hkV0xpu7WTj?usp=sharing  
 # Сравнение файлов FastQC  
 BS-seq образец - SRR3824222_1 (указан на скриншотах слева)  
 RNA-Seq образец - SRR3414629_1 (указан на скриншотах справа)  
