@@ -1,0 +1,142 @@
+#установка FastQC
+!wget https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.9.zip
+!unzip fastqc_v0.11.9.zip
+!chmod a+x FastQC/fastqc
+#загрузка образцов для SRR3824222 и запуск FastQC
+!wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR382/002/SRR3824222/SRR3824222_1.fastq.gz
+!gunzip SRR3824222_1.fastq.gz
+!./FastQC/fastqc /content/SRR3824222_1.fastq
+#установка Bismark
+!pip install -q condacolab
+import condacolab
+condacolab.install()
+import condacolab
+condacolab.check()
+!conda install -c bioconda bismark
+!samtools view
+rm ~/.cache/gdown/cookies.json
+#загрузка bam-файлов с гугл-диска
+!gdown --id 1A0yrDgfIyBir3fPgT9_mclEZNOUkhCfP
+!gdown --id 1NmzWngRAZvChd1C7JlNkIr2iQShW1BRm
+!gdown --id 1q74W3m0bC41q5x29yO2G4tjesLl-1jih
+#отчеты о выравнивании
+!gdown --id 1tnhtwKBO2Fszj-Im30XuuADtO7oIN5-B
+!gdown --id 1a-USP32jw0n6L9pRqsbUCjt4j8VopPBg
+!gdown --id 14vyhf4aKfEPXR2yfK1Rk_f3Muzf1hL40
+!ls -lh
+!samtools view SRR5836473_1_bismark_bt2_pe.bam | head
+#сортировка bam-файлов
+!samtools sort SRR5836473_1_bismark_bt2_pe.bam -o sorted_8cell.bam
+!samtools sort SRR3824222_1_bismark_bt2_pe.bam -o sorted_epiblast.bam
+!samtools sort SRR5836475_1_bismark_bt2_pe.bam -o sorted_ICM.bam
+!samtools index  sorted_8cell.bam
+!samtools index  sorted_epiblast.bam
+!samtools index  sorted_ICM.bam
+#На регион 11347700-11367700 в образце 8-cell закартировалось 1090 ридов
+!samtools view sorted_8cell.bam chr11:11347700-11367700 | cut -f1 | sort -u | wc -l
+#На регион 40185800-40195800 в образце 8-cell закартировалось 464 ридов
+!samtools view sorted_8cell.bam chr11:40185800-40195800 | cut -f1 | sort -u | wc -l
+#На регион 11347700-11367700 в образце epiblast закартировалось 2328 ридов
+!samtools view sorted_epiblast.bam chr11:11347700-11367700 | cut -f1 | sort -u | wc -l
+#На регион 40185800-40195800 в образце epiblast закартировалось 1062 ридов
+!samtools view sorted_epiblast.bam chr11:40185800-40195800 | cut -f1 | sort -u | wc -l
+#На регион 11347700-11367700 в образце ICM закартировалось 1456 ридов
+!samtools view sorted_ICM.bam chr11:11347700-11367700 | cut -f1 | sort -u | wc -l
+#На регион 40185800-40195800 в образце ICM закартировалось 630 ридов
+!samtools view sorted_ICM.bam chr11:40185800-40195800 | cut -f1 | sort -u | wc -l
+#дедупликация образца 8-cell. Всего дуплицированных позиций: 18.31%
+!deduplicate_bismark  --bam  --paired  -o s_8_cell  SRR5836473_1_bismark_bt2_pe.bam
+#дедупликация образца epiblast. Всего дуплицированных позиций: 2.92%
+!deduplicate_bismark  --bam  --paired  -o s_epiblast  SRR3824222_1_bismark_bt2_pe.bam
+#дедупликация образца ICM. Всего дуплицированных позиций: 9.08%
+!deduplicate_bismark  --bam  --paired  -o s_ICM  SRR5836475_1_bismark_bt2_pe.bam
+#геном мыши
+!gdown --id 1Gh6YYO8zmCiUfZ4ShVcvFp3J_gXjnoOF
+!unzip mouse_chr.zip
+!ls
+#коллинг метилирования
+!bismark_methylation_extractor --gzip --bedGraph --cytosine_report --genome_folder ./mouse_chr s_8_cell.deduplicated.bam
+!bismark_methylation_extractor --gzip --bedGraph --cytosine_report --genome_folder ./mouse_chr s_epiblast.deduplicated.bam
+!bismark_methylation_extractor --gzip --bedGraph --cytosine_report --genome_folder ./mouse_chr s_ICM.deduplicated.bam
+! ls -lh
+! bismark2report -mbias_report s_epiblast.deduplicated.M-bias.txt
+! bismark2report -mbias_report s_8_cell.deduplicated.M-bias.txt
+! bismark2report -mbias_report s_ICM.deduplicated.M-bias.txt
+!guzip s_8_cenll.deduplicated.bedGraph.gz
+!gunzip s_epiblast.deduplicated.bedGraph.gz
+!gunzip s_ICM.deduplicated.bedGraph.gz
+#Визуализация уровня метилирования. Здесь установка и скачивание всего, что нужно
+!pip install pyGenomeTracks
+!pip install -U ipykernel
+!conda install -c bioconda ucsc-fetchchromsizes
+!fetchChromSizes mm10 > m.chrom.sizes
+!conda install -c bioconda ucsc-bedgraphtobigwig
+#создание файлов BigWig для метилирования
+!bedGraphToBigWig  s_8_cell.deduplicated.bedGraph m.chrom.sizes cell8_methylation.bigWig
+!bedGraphToBigWig  s_epiblast.deduplicated.bedGraph m.chrom.sizes epiblast_methylation.bigWig
+!bedGraphToBigWig  s_ICM.deduplicated.bedGraph m.chrom.sizes ICM_methylation.bigWig
+!apt-get install bedtools
+#перевод файлов bam в bedGraph
+!bedtools genomecov -bg -ibam s_8_cell.deduplicated.bam -g m.chromSizes  >  s_8_cell.cover.bedGraph
+! bedtools genomecov -bg -ibam s_epiblast.deduplicated.bam -g m.chromSizes  >  s_epiblast.cover.bedGraph
+!bedtools genomecov -bg -ibam s_ICM.deduplicated.bam -g m.chromSizes  >  s_ICM.cover.bedGraph
+#перевод файлов bedGraph в файлы BigWig для покрытия
+!bedGraphToBigWig   s_8_cell.cover.bedGraph m.chrom.sizes cell8_coverage.bigWig
+!bedGraphToBigWig   s_epiblast.cover.bedGraph m.chrom.sizes epiblast_coverage.bigWig
+!bedGraphToBigWig   s_ICM.cover.bedGraph m.chrom.sizes ICM_coverage.bigWig
+#визуализация уровня покрытия и метилирования
+!pyGenomeTracks --tracks tracks_cell8.ini.txt --region chr11:3100030-3500030 -o image_cell8.png
+!pyGenomeTracks --tracks tracks_epiblast.ini.txt --region chr11:3100030-3500030 -o image_epiblast.png
+!pyGenomeTracks --tracks tracks_ICM.ini.txt --region chr11:3100030-3500030 -o image_ICM.png
+#построение гистограмм
+import numpy as np 
+import pandas as pd
+import matplotlib.pyplot as plt
+#гистограмма для образца cell8
+test = open('s_8_cell.deduplicated.bedGraph', 'r')
+test_new = open('s_8_cell_new.txt', 'w')
+c_1 = test.readline()
+print(c_1)
+for line in test:
+  test_new.write(line)
+test.close()
+test_new.close()
+table_s_8_cell = pd.read_table('s_8_cell_new.txt', sep = '	', names = ['chromosome', 'start', 'end', 'percentage'])
+print(table_s_8_cell)
+table_s_8_cell['percentage'] = pd.to_numeric(table_s_8_cell['percentage'])
+plt.hist(table_s_8_cell['percentage'])
+plt.title('8 cell')
+plt.xlabel('Percentage')
+plt.ylabel('Frequency')
+#гистограмма для образца epiblast
+test_2 = open('s_epiblast.deduplicated.bedGraph', 'r')
+test_2_new = open('s_epiblast_new.txt', 'w')
+c_2 = test_2.readline()
+print(c_2)
+for line in test_2:
+  test_2_new.write(line)
+test_2.close()
+test_2_new.close()
+table_epiblast = pd.read_table('s_epiblast_new.txt', sep = '	', names = ['chromosome', 'start', 'end', 'percentage', 'frequency'])
+print(table_epiblast)
+table_epiblast['percentage'] = pd.to_numeric(table_epiblast['percentage'])
+plt.hist(table_epiblast['percentage'], color = 'red')
+plt.title('Epiblast')
+plt.xlabel('Percentage')
+plt.ylabel('Frequency')
+#гистограмма для образца ICM
+test_3 = open('s_ICM.deduplicated.bedGraph', 'r')
+test_3_new = open('s_ICM_new.txt', 'w')
+c_3 = test_3.readline()
+print(c_3)
+for line in test_3:
+  test_3_new.write(line)
+test_3.close()
+test_3_new.close()
+table_ICM = pd.read_table('s_ICM_new.txt', sep = '	', names = ['chromosome', 'start', 'end', 'percentage', 'frequency'])
+print(table_ICM)
+table_ICM['percentage'] = pd.to_numeric(table_ICM['percentage'])
+plt.hist(table_ICM['percentage'], color = 'green')
+plt.title('ICM')
+plt.xlabel('Percentage')
+plt.ylabel('Frequency')
